@@ -50,9 +50,9 @@ class Font:
                 n = 0
                 for letter in self.input_letter:
                     font = ImageFont.truetype(font_file, self.size)
-                    img = Image.new('L',(self.size,self.size),(1))
+                    img = Image.new('1',(self.size,self.size),0)      # orignial: L and (1)
                     draw = ImageDraw.Draw(img)
-                    draw.text((10, -5),letter,(0),font = font)
+                    draw.text((10, -5),letter,1,font = font)      # original: (0)
                     draw = ImageDraw.Draw(img)
                     train_input[m, n, :, :] = np.array(img)
                     n = n + 1
