@@ -32,10 +32,12 @@ font_dir = 'Fonts'
 input_letter = ['兰','亭','集','序']
 output_letter = ['羲']
 
-lamb = 0.001        # neural network parameter cost, regularization
+lamb1 = 0.0001        # neural network parameter cost, regularization
+lamb2 = 0.5
+
 
 n_train_batches = 10
-n_epochs = 20000       #original:1500
+n_epochs = 50000       #original:1500
 batch_size = 1
 
 learning_rate = 1   # learning rate, when using 0.02, less than 200000 epoches will not work.
@@ -212,7 +214,7 @@ params = (layer4.params
           + layer10.params + layer11.params + layer12.params + layer13.params
           + layer00.params + layer01.params + layer02.params + layer03.params)
 
-cost = layer4.negative_log_likelihood(y)+ lamb * sum([(x*x).sum() for x in params])              #+ lamb * theano.tensor.sum(np.sum(params)) # lamb and following term can be removed
+cost = layer4.negative_log_likelihood(y)+ lamb1 * ((params[0])**2).sum() + lamb2 * ((params[1])**2).sum()             #+ lamb * theano.tensor.sum(np.sum(params)) # lamb and following term can be removed
 
 error = ((y - layer4.y_pred)**2).sum()
 # THEANO_FLAGS = 'optimizer = fast_compile'
@@ -304,10 +306,10 @@ for testindex in range(output_num):
     plt.subplot(siz + le + 1)
     plt.imshow(testOutput[testindex,:].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')
     x = 0
-    st = 'test/c6lasfil-'+ str(learning_rate) + '-' + str(lamb) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
+    st = 'test/c6lasfil-'+ str(learning_rate) + '-' + str(lamb1) + '-' + str(lamb2) + '-'+ str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
     while os.path.exists(st + '-' + str(x) + '.png'):
         x += 1
-    plt.savefig(st + '-' + str(x)+'.png')
+    plt.savefig(st + '-' +'.png')
     plt.show()
 
 
@@ -325,7 +327,7 @@ for testindex in range(output_num):
 
 fig, ax = plt.subplots( nrows=1, ncols=1 )
 ax.plot(costlist)
-fig.savefig(st + 'cost_graph.png')
+fig.savefig(st + '-' + str(x) + 'cost_graph.png')
 plt.close(fig)
 
 """st2 = 'c6lasfi-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
@@ -338,7 +340,7 @@ textfile = open('paramrecord', 'a')
 textfile.write(st + '-' + str(x) + '\n'
                + "learning rate :" + str(learning_rate) + '\n'
                + 'test number: ' + str(output_num) +'\n'
-               + 'lambda: ' + str(lamb) + '\n'
+               + 'lambda: ' + str(lamb1) + '/' + str(lamb2) + '\n'
                + str(total) +'\n \n')
 textfile.close()
 
