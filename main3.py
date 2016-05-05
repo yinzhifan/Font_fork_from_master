@@ -28,10 +28,10 @@ from NeuralNets import *
 basis_size = 36
 font_dir = 'Fonts'
 input_letter = ['B','A','S','Q']
-output_letter = ['X']
+output_letter = ['R']
 
-n_train_batches = 6
-n_epochs = 1000       #original:1500
+n_train_batches = 10
+n_epochs = 50000       #original:1500
 
 output_num = 4
 batch_size = 1
@@ -39,6 +39,10 @@ batch_size = 1
 lamb1 = 0.01
 lamb2 = 0.01
 
+f0size = 1
+f1size = 1
+
+learning_rate = 1
 
 #%% compare output
 n = 0
@@ -65,9 +69,6 @@ testOutput = testOutput.reshape((n_test,image_size*len(output_letter)))
 trainInput, trainOutput = shared_dataset(trainInput, trainOutput)
 
 
-
-
-
 #%% building neural networks
 
 
@@ -76,7 +77,6 @@ rng2 = np.random.RandomState(2345)
 rng3 = np.random.RandomState(1567)
 rng4 = np.random.RandomState(1124)
 nkerns = [2, 2]
-learning_rate = 1
 
 
 # allocate symbolic variables for the data
@@ -251,40 +251,47 @@ train_model = theano.function(
 
 #%% training the model
 
-
 epoch = 0
+costlist = []
+
 
 while (epoch < n_epochs):
     epoch = epoch + 1
+    total = 0
     for minibatch_index in range(n_train_batches):
         minibatch_avg_cost = train_model(minibatch_index)
+        total += minibatch_avg_cost
         iter = (epoch - 1) * n_train_batches + minibatch_index
-        print(('   epoch %i, minibatch %i/%i.') % (epoch, minibatch_index +1, n_train_batches))
-
+        #print(('   epoch %i, minibatch %i/%i.') % (epoch, minibatch_index +1, n_train_batches))
+    if (epoch % 100 == 0):
+        print(('   epoch %i') % (epoch))
+        total = total/n_train_batches
+        print(total)
+        costlist += [total]
 #test_losses = [test_model(i) for i in range(n_test_batches)]
 #test_score = np.mean(test_losses)
 
 theano.function
 #%% predict output
+if not os.path.exists('test'):
+    os.makedirs('test')
 
-
-
+# print(error)
 predict_model = theano.function(
-        inputs = [x,y],
-        outputs = [layer4.p_y_given_x,cost],
-        on_unused_input='ignore',
-        allow_input_downcast=True
-    )
-
-predicted_values = predict_model(testInput[0:batch_size], testOutput[0:batch_size])
-
+    inputs=[x, y],
+    outputs=[layer4.p_y_given_x, cost],
+    on_unused_input='ignore',
+    allow_input_downcast=True
+)
 
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-for testindex in range(output_num):
-    predicted_values = predict_model(testInput[testindex * batch_size:(testindex + 1) * batch_size], testOutput[testindex * batch_size:(testindex + 1) * batch_size])
 
+test_cost_list = []
+for testindex in range(output_num):
+    predicted_values = predict_model(testInput[testindex * batch_size:(testindex + 1) * batch_size],
+                                     testOutput[testindex * batch_size:(testindex + 1) * batch_size])
     output_img = predicted_values[0]
     test_cost = predicted_values[1]
     output_img = output_img.reshape(batch_size,basis_size,basis_size)
@@ -309,15 +316,17 @@ for testindex in range(output_num):
     plt.subplot(siz + le + 1)
     plt.imshow(testOutput[testindex,:].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')
     x = 0
-    st = 'test/7lasfil-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
+    st = 'test/c-4l-2cov-as-f-i-l-'+ str(learning_rate) + '-' + str(lamb1) + '-' + str(lamb2) + '-'+ str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
     while os.path.exists(st + '-' + str(x) + '.png'):
         x += 1
     plt.savefig(st + '-' + str(x) +'.png')
     plt.show()
     print(test_cost)
+    test_cost_list += [test_cost]
 
 # c: Chinese test training
-# 6l: 6 layers in total
+# 6l: 6 layers in total; or nl
+# 2cov: 2 convolutional layers
 # as: autosave, f: font.py changes, i: image display change (L -> 1)
 # l: lambda
 # name style: surffi -d -a -b -c -num
@@ -329,12 +338,24 @@ for testindex in range(output_num):
 
 
 fig, ax = plt.subplots( nrows=1, ncols=1 )
+ax.plot(costlist)
 fig.savefig(st + '-' + str(x) + 'cost_graph.png')
 plt.close(fig)
 
-"""st2 = 'c6lasfi-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
+"""st2 = '4lasfi-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
 text_index = 0
 textfile = open('testparams/'+st2 + '-' + str(x) + '.txt', 'w')
 text = str(params)
 textfile.write(st)
 textfile.close()"""
+textfile = open('paramrecord', 'a')
+textfile.write(st + '-' + str(x) + '\n'
+               + "learning rate :" + str(learning_rate) + '\n'
+               + 'test number: ' + str(output_num) +'\n'
+               + 'lambda: ' + str(lamb1) + '/' + str(lamb2) + '\n'
+               + 'filer size: ' + str(f0size) + '/' + str(f1size) + '\n'
+               + 'training cost: ' + str(total) +'\n'
+               + 'testing cost: ' + str(sum(test_cost_list) / len(test_cost_list))
+               +'\n \n')
+textfile.close()
+
