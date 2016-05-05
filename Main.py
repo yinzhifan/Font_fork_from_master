@@ -31,10 +31,13 @@ input_letter = ['B','A','S','Q']
 output_letter = ['X']
 
 n_train_batches = 210
-n_epochs = 1       #original:1500
+n_epochs = 10       #original:1500
 
 output_num = 4
-batch_size = 50
+batch_size = 10
+
+#%% compare output
+n = 0
 
 Fonts = Font(basis_size, font_dir, input_letter, output_letter )
 #%%
@@ -162,6 +165,8 @@ layer2 = HiddenLayer(
         n_out=50,
         activation=T.nnet.sigmoid
     )
+
+
 layer3 = HiddenLayer(
         np.random.RandomState(np.random.randint(10000)),
         input=layer2.output,
@@ -237,10 +242,9 @@ predict_model = theano.function(
         on_unused_input='ignore'
     )
 
-predicted_values = predict_model(testInput[0:50])
+predicted_values = predict_model(testInput[0:batch_size])
 
-#%% compare output
-n = 3
+
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
@@ -249,6 +253,12 @@ output_img = output_img.reshape(batch_size,basis_size,basis_size)
 output_img = np.asarray(output_img, dtype = 'float64') /256
 plt.figure(1)
 plt.subplot(121)
+"""
+plt.imshow(output_img[n,:,:],interpolation="nearest",cmap='Greys')
+"""
+"""
+plt.imshow(testInput[n,:,:],interpolation="nearest",cmap='Greys')
+"""
 plt.imshow(output_img[n,:,:],interpolation="nearest",cmap='Greys')
 plt.subplot(122)
 plt.imshow(testOutput[n,:].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')

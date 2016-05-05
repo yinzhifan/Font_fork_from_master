@@ -32,11 +32,11 @@ font_dir = 'Fonts'
 input_letter = ['兰','亭','集','序']
 output_letter = ['羲']
 
-lamb = 0.00001        # neural network parameter cost, regularization
+lamb = 0.001        # neural network parameter cost, regularization
 
-n_train_batches = 20
+n_train_batches = 10
 n_epochs = 20000       #original:1500
-batch_size = 4
+batch_size = 1
 
 learning_rate = 1   # learning rate, when using 0.02, less than 200000 epoches will not work.
 

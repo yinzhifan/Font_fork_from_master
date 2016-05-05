@@ -43,16 +43,17 @@ class Font:
         train_output = np.zeros((n_train_examples, len(self.output_letter),self.size,self.size))
         test_input = np.zeros((n_test_examples, len(self.input_letter),self.size,self.size))
         test_output = np.zeros((n_test_examples, len(self.output_letter),self.size,self.size))
-        
+        wi = int(self.size * 0.9)
+        le = int(self.size * 0.05)
         m = 0
         for font_file in self.font_files[0:n_train_examples]:
             try:
                 n = 0
                 for letter in self.input_letter:
-                    font = ImageFont.truetype(font_file, self.size)
+                    font = ImageFont.truetype(font_file, wi)
                     img = Image.new('1',(self.size,self.size),0)      # orignial: L and (1)
                     draw = ImageDraw.Draw(img)
-                    draw.text((10, -5),letter,1,font = font)      # original: (0)
+                    draw.text((le, le),letter,1,font = font)      # original: (0)
                     draw = ImageDraw.Draw(img)
                     train_input[m, n, :, :] = np.array(img)
                     n = n + 1
@@ -62,7 +63,7 @@ class Font:
                     font = ImageFont.truetype(font_file, self.size)
                     img = Image.new('L',(self.size,self.size),(1))
                     draw = ImageDraw.Draw(img)
-                    draw.text((10, -5),letter,(0),font = font)
+                    draw.text((le, le),letter,(0),font = font)
                     draw = ImageDraw.Draw(img)
                     train_output[m, n, :, :] = np.array(img)
                     n = n + 1
@@ -81,7 +82,7 @@ class Font:
                     font = ImageFont.truetype(font_file, self.size)
                     img = Image.new('L',(self.size,self.size),(1))
                     draw = ImageDraw.Draw(img)
-                    draw.text((10, -5),letter,(0),font = font)
+                    draw.text((le, le),letter,(0),font = font)
                     draw = ImageDraw.Draw(img)
                     test_input[m, n, :, :] = np.array(img)
                     n = n + 1
@@ -90,7 +91,7 @@ class Font:
                     font = ImageFont.truetype(font_file, self.size)
                     img = Image.new('L',(self.size,self.size),(1))
                     draw = ImageDraw.Draw(img)
-                    draw.text((10, -5),letter,(0),font = font)
+                    draw.text((le, le),letter,(0),font = font)
                     draw = ImageDraw.Draw(img)
                     test_output[m, n, :, :] = np.array(img)
                     n = n + 1
