@@ -29,16 +29,18 @@ from NeuralNets import *
 
 basis_size = 36
 font_dir = 'Fonts'
-input_letter = ['B','A','S','R']
-output_letter = ['R']
+input_letter = ['兰','亭','集','序']
+output_letter = ['羲']
 
-n_train_batches = 5
-n_epochs = 1000       #original:1500
-batch_size = 1
+lamb = 0.00001        # neural network parameter cost, regularization
+
+n_train_batches = 20
+n_epochs = 20000       #original:1500
+batch_size = 4
 
 learning_rate = 1   # learning rate, when using 0.02, less than 200000 epoches will not work.
 
-output_num = 4      # test font output number
+output_num = 3      # test font output number
 
 total_layer = 6     # writing def in loop is complicated, this parameter is not used
 #%% compare output
@@ -65,20 +67,6 @@ testInput = testInput.reshape((n_test,image_size*len(input_letter)))
 testOutput = testOutput.reshape((n_test,image_size*len(output_letter)))
 trainInput, trainOutput = shared_dataset(trainInput, trainOutput)
 
-
-## add another input node, adjusting input:
-
-wi = int(basis_size * 0.9)
-le = int(basis_size * 0.05)
-font = ImageFont.truetype('Fonts/simsun.ttf', basis_size)
-img = Image.new('L', (basis_size, basis_size), (1))
-draw = ImageDraw.Draw(img)
-draw.text((le, le), 'R', (0), font=font)
-draw = ImageDraw.Draw(img)
-extrainput = np.array(img)
-extrainput = extrainput.reshape(batch_size, 1, basis_size, basis_size)
-##
-
 #%% building neural networks
 
 
@@ -101,13 +89,10 @@ layer00_input = x[:,0:image_size].reshape((batch_size, 1, basis_size, basis_size
 layer01_input = x[:,image_size:2 * image_size].reshape((batch_size, 1, basis_size, basis_size))
 layer02_input = x[:,2 * image_size:3 * image_size].reshape((batch_size, 1, basis_size, basis_size))
 layer03_input = x[:,3 * image_size:4 * image_size].reshape((batch_size, 1, basis_size, basis_size))
-layer04_input = extrainput
-
 # first convolutional layer
 # image original size 50X50, filter size 5X5, filter number nkerns[0]
 # after filtering, image size reduced to (36 - 3 + 1) = 34
 # after max pooling, image size reduced to 34 / 2 = 17
-
 layer00 = LeNetConvPoolLayer(
         np.random.RandomState(np.random.randint(10000)),
         input=layer00_input,
@@ -137,13 +122,6 @@ layer03 = LeNetConvPoolLayer(
         poolsize=(2, 2)
     )
 
-layer04 = LeNetConvPoolLayer(
-    np.random.RandomState(np.random.randint(10000)),
-    input=extrainput,
-    image_shape=(batch_size, 1, basis_size, basis_size),  # input image shape
-    filter_shape=(nkerns[0], 1, 3, 3),
-    poolsize=(2, 2)
-)
 
 # second convolutional layer
 # input image size 23X23, filter size 4X4, filter number nkerns[1]
@@ -178,18 +156,8 @@ layer13 = LeNetConvPoolLayer(
         poolsize=(2, 2)
     )
 
-layer14 = LeNetConvPoolLayer(
-    np.random.RandomState(np.random.randint(10000)),
-    input=layer04.output,
-    image_shape=(batch_size, nkerns[0], 17, 17),
-    filter_shape=(nkerns[1], nkerns[0], 4, 4),
-    poolsize=(2, 2)
-)
-
-
 # layer 2 input size = 2 * 4 * 7 * 7 =  392
-layer2_input = T.concatenate([layer10.output.flatten(2), layer11.output.flatten(2), layer12.output.flatten(2),
-                              layer13.output.flatten(2), layer14.output.flatten(2)],
+layer2_input = T.concatenate([layer10.output.flatten(2), layer11.output.flatten(2), layer12.output.flatten(2), layer13.output.flatten(2)],
                               axis = 1)
 
 # construct a fully-connected sigmoidal layer
@@ -217,6 +185,7 @@ layer6 = HiddenLayer(
     activation=T.nnet.sigmoid
 )
 
+
 layer3 = HiddenLayer(
         np.random.RandomState(np.random.randint(10000)),
         input=layer6.output,
@@ -225,6 +194,9 @@ layer3 = HiddenLayer(
         activation=T.nnet.sigmoid
     )
 
+
+
+
 layer4 = BinaryLogisticRegression(
         np.random.RandomState(np.random.randint(10000)),
         input=layer3.output,
@@ -232,16 +204,19 @@ layer4 = BinaryLogisticRegression(
         n_out=basis_size * basis_size,
     )
 
-cost = layer4.negative_log_likelihood(y)
-error = ((y - layer4.y_pred)**2).sum()
-
 params = (layer4.params
-        + layer3.params
-        + layer2.params
-        + layer5.params
-        + layer6.params
-        + layer10.params + layer11.params + layer12.params + layer13.params + layer14.params
-        + layer00.params + layer01.params + layer02.params + layer03.params + layer04.params)
+          + layer3.params
+          + layer2.params
+          + layer5.params
+          + layer6.params
+          + layer10.params + layer11.params + layer12.params + layer13.params
+          + layer00.params + layer01.params + layer02.params + layer03.params)
+
+cost = layer4.negative_log_likelihood(y)+ lamb * sum([(x*x).sum() for x in params])              #+ lamb * theano.tensor.sum(np.sum(params)) # lamb and following term can be removed
+
+error = ((y - layer4.y_pred)**2).sum()
+# THEANO_FLAGS = 'optimizer = fast_compile'
+
 grads = T.grad(cost, params)
 
 updates = [
@@ -271,28 +246,32 @@ train_model = theano.function(
 
 #%% training the model
 
-
 epoch = 0
+costlist = []
+
 
 while (epoch < n_epochs):
     epoch = epoch + 1
+    total = 0
     for minibatch_index in range(n_train_batches):
         minibatch_avg_cost = train_model(minibatch_index)
-        print(minibatch_avg_cost)
+        total += minibatch_avg_cost
         iter = (epoch - 1) * n_train_batches + minibatch_index
-        print(('   epoch %i, minibatch %i/%i.') % (epoch, minibatch_index +1, n_train_batches))
-
+        #print(('   epoch %i, minibatch %i/%i.') % (epoch, minibatch_index +1, n_train_batches))
+    if (epoch % 100 == 0):
+        print(('   epoch %i') % (epoch))
+        print(total)
+        costlist += [total]
 #test_losses = [test_model(i) for i in range(n_test_batches)]
 #test_score = np.mean(test_losses)
 
 theano.function
 #%% predict output
 
-
 # print(error)
 predict_model = theano.function(
         inputs = [x],
-        outputs = layer4.p_y_given_x,
+        outputs = layer4.y_pred,
         on_unused_input='ignore'
     )
 
@@ -325,28 +304,43 @@ for testindex in range(output_num):
     plt.subplot(siz + le + 1)
     plt.imshow(testOutput[testindex,:].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')
     x = 0
-    st = 'test/c6lasfi-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
+    st = 'test/c6lasfil-'+ str(learning_rate) + '-' + str(lamb) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
     while os.path.exists(st + '-' + str(x) + '.png'):
         x += 1
     plt.savefig(st + '-' + str(x)+'.png')
     plt.show()
 
-# as: autosave, f: font.py changes, i: image display change (L -> 1)  -num in the end: the name for same parameter images.
-# 6l: 6 layers in total
+
 # c: Chinese test training
+# 6l: 6 layers in total
+# as: autosave, f: font.py changes, i: image display change (L -> 1)
+# l: lambda
 # name style: surffi -d -a -b -c -num
 # -d learning rate
 # -a n_train_batches
 # -b n_epochs      #original: 1500
 # -c batch_size    #original: 50
+# -num in the end: the name for same parameter images.
 
+
+fig, ax = plt.subplots( nrows=1, ncols=1 )
+ax.plot(costlist)
+fig.savefig(st + 'cost_graph.png')
+plt.close(fig)
 
 """st2 = 'c6lasfi-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
 text_index = 0
 textfile = open('testparams/'+st2 + '-' + str(x) + '.txt', 'w')
 text = str(params)
-
-
-textfile.write(text)
+textfile.write(st)
 textfile.close()"""
+textfile = open('paramrecord', 'a')
+textfile.write(st + '-' + str(x) + '\n'
+               + "learning rate :" + str(learning_rate) + '\n'
+               + 'test number: ' + str(output_num) +'\n'
+               + 'lambda: ' + str(lamb) + '\n'
+               + str(total) +'\n \n')
+textfile.close()
+
+
 
