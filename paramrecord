@@ -1,0 +1,52 @@
+test/c6lasfi-1-1-200000-1-2
+learning rate :1
+test number: 3
+0.000135143862592
+test/c6lasfil-1-0.0001-0.5-6-30000-5-0
+learning rate :1
+test number: 3
+lambda: 0.0001/0.5
+2.55743106014
+ 
+test/c6lasfil-2-0.0001-0.05-6-30000-5-0
+learning rate :2
+test number: 3
+lambda: 0.0001/0.05
+2.72479447124
+ 
+test/c6lasfil-2-0.0001-0.05-6-30000-1-0
+learning rate :2
+test number: 3
+lambda: 0.0001/0.05
+2.51456251426
+ 
+test/c6lasfil-2-0.0001-0.05-6-2000-1-0
+learning rate :2
+test number: 3
+lambda: 0.0001/0.05
+nan
+ 
+test/c6lasfil-1-0.05-0.05-6-2000-1-0
+learning rate :1
+test number: 3
+lambda: 0.05/0.05
+nan
+ 
+test/c6lasfil-1-0.01-0.01-6-2000-1-0
+learning rate :1
+test number: 3
+lambda: 0.01/0.01
+-3.33019582658e+205
+ 
+test/c6lasfil-1-0.01-0.01-6-2000-1-0
+learning rate :1
+test number: 3
+lambda: 0.01/0.01
+3.65518652677
+ 
+test/c6lasfil-1-0.01-0.01-5-50000-1-0
+learning rate :1
+test number: 3
+lambda: 0.01/0.01
+3.04347517082
+ 

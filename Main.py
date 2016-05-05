@@ -30,11 +30,15 @@ font_dir = 'Fonts'
 input_letter = ['B','A','S','Q']
 output_letter = ['X']
 
-n_train_batches = 210
-n_epochs = 10       #original:1500
+n_train_batches = 6
+n_epochs = 50000       #original:1500
 
 output_num = 4
-batch_size = 10
+batch_size = 1
+
+lamb1 = 0.01
+lamb2 = 0.01
+
 
 #%% compare output
 n = 0
@@ -166,10 +170,33 @@ layer2 = HiddenLayer(
         activation=T.nnet.sigmoid
     )
 
+layer5 = HiddenLayer(
+    np.random.RandomState(np.random.randint(10000)),
+    input=layer2.output,
+    n_in=50,
+    n_out=50,
+    activation=T.nnet.sigmoid
+)
+
+layer6 = HiddenLayer(
+    np.random.RandomState(np.random.randint(10000)),
+    input=layer5.output,
+    n_in=50,
+    n_out=50,
+    activation=T.nnet.sigmoid
+)
+
+layer7 = HiddenLayer(
+    np.random.RandomState(np.random.randint(10000)),
+    input=layer6.output,
+    n_in=50,
+    n_out=50,
+    activation=T.nnet.sigmoid
+)
 
 layer3 = HiddenLayer(
         np.random.RandomState(np.random.randint(10000)),
-        input=layer2.output,
+        input=layer7.output,
         n_in=50,
         n_out=50,
         activation=T.nnet.sigmoid
@@ -181,14 +208,20 @@ layer4 = BinaryLogisticRegression(
         n_in=50,
         n_out=basis_size * basis_size,
     )    
-cost = layer4.negative_log_likelihood(y)
+
 error = ((y - layer4.y_pred)**2).sum()
 
 params = (layer4.params 
         + layer3.params 
-        + layer2.params 
+        + layer2.params
+        + layer5.params
+        + layer6.params
+        + layer7.params
         + layer10.params + layer11.params + layer12.params + layer13.params
         + layer00.params + layer01.params + layer02.params + layer03.params)
+
+cost = layer4.negative_log_likelihood(y) + lamb1 * ((params[0])**2).sum() + lamb2 * ((params[1])**2).sum()
+
 grads = T.grad(cost, params)
 
 updates = [
@@ -248,18 +281,58 @@ predicted_values = predict_model(testInput[0:batch_size])
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-output_img = predicted_values
-output_img = output_img.reshape(batch_size,basis_size,basis_size)
-output_img = np.asarray(output_img, dtype = 'float64') /256
-plt.figure(1)
-plt.subplot(121)
-"""
-plt.imshow(output_img[n,:,:],interpolation="nearest",cmap='Greys')
-"""
-"""
-plt.imshow(testInput[n,:,:],interpolation="nearest",cmap='Greys')
-"""
-plt.imshow(output_img[n,:,:],interpolation="nearest",cmap='Greys')
-plt.subplot(122)
-plt.imshow(testOutput[n,:].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')
-plt.show()
+for testindex in range(output_num):
+    predicted_values = predict_model(testInput[testindex * batch_size:(testindex + 1) * batch_size])
+
+    output_img = predicted_values[0]
+    output_img = output_img.reshape(batch_size,basis_size,basis_size)
+    output_img = np.asarray(output_img, dtype = 'float64') /256
+    plt.figure(1)
+
+    le = len(input_letter)
+    siz = 10*le + 200
+
+    for x in range(len(input_letter)):
+
+        plt.subplot(siz + x + 1)
+        plt.imshow(testInput[testindex,x * image_size:  (x+1)*image_size].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')
+    plt.subplot(siz + le + 2)
+    """
+    plt.imshow(output_img[n,:,:],interpolation="nearest",cmap='Greys')
+    """
+    """
+    plt.imshow(testInput[n,:,:],interpolation="nearest",cmap='Greys')
+    """
+    plt.imshow(output_img[0,:,:],interpolation="nearest",cmap='Greys')
+    plt.subplot(siz + le + 1)
+    plt.imshow(testOutput[testindex,:].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')
+    x = 0
+    st = 'test/7lasfil-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
+    while os.path.exists(st + '-' + str(x) + '.png'):
+        x += 1
+    plt.savefig(st + '-' + str(x) +'.png')
+    plt.show()
+
+
+# c: Chinese test training
+# 6l: 6 layers in total
+# as: autosave, f: font.py changes, i: image display change (L -> 1)
+# l: lambda
+# name style: surffi -d -a -b -c -num
+# -d learning rate
+# -a n_train_batches
+# -b n_epochs      #original: 1500
+# -c batch_size    #original: 50
+# -num in the end: the name for same parameter images.
+
+
+fig, ax = plt.subplots( nrows=1, ncols=1 )
+fig.savefig(st + '-' + str(x) + 'cost_graph.png')
+plt.close(fig)
+
+"""st2 = 'c6lasfi-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
+text_index = 0
+textfile = open('testparams/'+st2 + '-' + str(x) + '.txt', 'w')
+text = str(params)
+textfile.write(st)
+textfile.close()"""

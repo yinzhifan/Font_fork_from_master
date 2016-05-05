@@ -12,12 +12,10 @@ Main function
 Created on Thu Apr  7 15:54:40 2016
 
 @author: shengx
-
-Plus a trivial edition made by Yin
 """
 
 #%% Load Data
-import os.path
+
 import numpy as np
 import theano
 from theano import tensor as T
@@ -29,22 +27,19 @@ from NeuralNets import *
 
 basis_size = 36
 font_dir = 'Fonts'
-input_letter = ['若','陈','忆','石']
-output_letter = ['忘']
+input_letter = ['B','A','S','Q']
+output_letter = ['X']
 
-lamb1 = 0.01        # neural network parameter cost, regularization
+n_train_batches = 6
+n_epochs = 1000       #original:1500
+
+output_num = 4
+batch_size = 1
+
+lamb1 = 0.01
 lamb2 = 0.01
 
 
-n_train_batches = 5
-n_epochs = 50000       #original:1500
-batch_size = 1
-
-learning_rate = 1   # learning rate, when using 0.02, less than 200000 epoches will not work.
-
-output_num = 3      # test font output number
-
-total_layer = 6     # writing def in loop is complicated, this parameter is not used
 #%% compare output
 n = 0
 
@@ -69,6 +64,10 @@ testInput = testInput.reshape((n_test,image_size*len(input_letter)))
 testOutput = testOutput.reshape((n_test,image_size*len(output_letter)))
 trainInput, trainOutput = shared_dataset(trainInput, trainOutput)
 
+
+
+
+
 #%% building neural networks
 
 
@@ -77,7 +76,7 @@ rng2 = np.random.RandomState(2345)
 rng3 = np.random.RandomState(1567)
 rng4 = np.random.RandomState(1124)
 nkerns = [2, 2]
-
+learning_rate = 1
 
 
 # allocate symbolic variables for the data
@@ -187,17 +186,21 @@ layer6 = HiddenLayer(
     activation=T.nnet.sigmoid
 )
 
+layer7 = HiddenLayer(
+    np.random.RandomState(np.random.randint(10000)),
+    input=layer6.output,
+    n_in=50,
+    n_out=50,
+    activation=T.nnet.sigmoid
+)
 
 layer3 = HiddenLayer(
         np.random.RandomState(np.random.randint(10000)),
-        input=layer6.output,
+        input=layer7.output,
         n_in=50,
         n_out=50,
         activation=T.nnet.sigmoid
     )
-
-
-
 
 layer4 = BinaryLogisticRegression(
         np.random.RandomState(np.random.randint(10000)),
@@ -206,18 +209,18 @@ layer4 = BinaryLogisticRegression(
         n_out=basis_size * basis_size,
     )
 
-params = (layer4.params
-          + layer3.params
-          + layer2.params
-          + layer5.params
-          + layer6.params
-          + layer10.params + layer11.params + layer12.params + layer13.params
-          + layer00.params + layer01.params + layer02.params + layer03.params)
-
-cost = layer4.negative_log_likelihood(y) + lamb1 * ((params[0])**2).sum() + lamb2 * ((params[1])**2).sum()             #+ lamb * theano.tensor.sum(np.sum(params)) # lamb and following term can be removed
-
 error = ((y - layer4.y_pred)**2).sum()
-# THEANO_FLAGS = 'optimizer = fast_compile'
+
+params = (layer4.params
+        + layer3.params
+        + layer2.params
+        + layer5.params
+        + layer6.params
+        + layer7.params
+        + layer10.params + layer11.params + layer12.params + layer13.params
+        + layer00.params + layer01.params + layer02.params + layer03.params)
+
+cost = layer4.negative_log_likelihood(y) + lamb1 * ((params[0])**2).sum() + lamb2 * ((params[1])**2).sum()
 
 grads = T.grad(cost, params)
 
@@ -248,44 +251,42 @@ train_model = theano.function(
 
 #%% training the model
 
-epoch = 0
-costlist = []
 
+epoch = 0
 
 while (epoch < n_epochs):
     epoch = epoch + 1
-    total = 0
     for minibatch_index in range(n_train_batches):
         minibatch_avg_cost = train_model(minibatch_index)
-        total += minibatch_avg_cost
         iter = (epoch - 1) * n_train_batches + minibatch_index
-        #print(('   epoch %i, minibatch %i/%i.') % (epoch, minibatch_index +1, n_train_batches))
-    if (epoch % 100 == 0):
-        print(('   epoch %i') % (epoch))
-        print(total)
-        costlist += [total]
+        print(('   epoch %i, minibatch %i/%i.') % (epoch, minibatch_index +1, n_train_batches))
+
 #test_losses = [test_model(i) for i in range(n_test_batches)]
 #test_score = np.mean(test_losses)
 
 theano.function
 #%% predict output
 
-# print(error)
+
+
 predict_model = theano.function(
-        inputs = [x],
-        outputs = [layer4.y_pred,cost],
-        on_unused_input='ignore'
+        inputs = [x,y],
+        outputs = [layer4.p_y_given_x,cost],
+        on_unused_input='ignore',
+        allow_input_downcast=True
     )
+
+predicted_values = predict_model(testInput[0:batch_size], testOutput[0:batch_size])
 
 
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
 for testindex in range(output_num):
-    predicted_values = predict_model(testInput[testindex * batch_size:(testindex + 1) * batch_size])
+    predicted_values = predict_model(testInput[testindex * batch_size:(testindex + 1) * batch_size], testOutput[testindex * batch_size:(testindex + 1) * batch_size])
 
     output_img = predicted_values[0]
+    test_cost = predicted_values[1]
     output_img = output_img.reshape(batch_size,basis_size,basis_size)
     output_img = np.asarray(output_img, dtype = 'float64') /256
     plt.figure(1)
@@ -308,12 +309,12 @@ for testindex in range(output_num):
     plt.subplot(siz + le + 1)
     plt.imshow(testOutput[testindex,:].reshape((basis_size,basis_size)),interpolation="nearest",cmap='Greys')
     x = 0
-    st = 'test/c6lasfil-'+ str(learning_rate) + '-' + str(lamb1) + '-' + str(lamb2) + '-'+ str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
+    st = 'test/7lasfil-'+ str(learning_rate) + '-' + str(n_train_batches) + '-' + str(n_epochs) +'-'+ str(batch_size)
     while os.path.exists(st + '-' + str(x) + '.png'):
         x += 1
     plt.savefig(st + '-' + str(x) +'.png')
     plt.show()
-
+    print(test_cost)
 
 # c: Chinese test training
 # 6l: 6 layers in total
@@ -328,7 +329,6 @@ for testindex in range(output_num):
 
 
 fig, ax = plt.subplots( nrows=1, ncols=1 )
-ax.plot(costlist)
 fig.savefig(st + '-' + str(x) + 'cost_graph.png')
 plt.close(fig)
 
@@ -338,13 +338,3 @@ textfile = open('testparams/'+st2 + '-' + str(x) + '.txt', 'w')
 text = str(params)
 textfile.write(st)
 textfile.close()"""
-textfile = open('paramrecord', 'a')
-textfile.write(st + '-' + str(x) + '\n'
-               + "learning rate :" + str(learning_rate) + '\n'
-               + 'test number: ' + str(output_num) +'\n'
-               + 'lambda: ' + str(lamb1) + '/' + str(lamb2) + '\n'
-               + str(total) +'\n \n')
-textfile.close()
-
-
-

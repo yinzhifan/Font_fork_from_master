@@ -29,12 +29,12 @@ from NeuralNets import *
 
 basis_size = 36
 font_dir = 'Fonts'
-input_letter = ['兰','亭','集','序']
-output_letter = ['羲']
+input_letter = ['若','陈','忆','石']
+output_letter = ['忘']
 
 lamb = 1        # neural network parameter cost, regularization
 
-n_train_batches = 10
+n_train_batches = 1
 n_epochs = 200000       #original:1500
 batch_size = 1
 
